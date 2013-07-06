@@ -1,2 +1,2 @@
-* standarized support for custom options (so it works e.g. with Ubuntu as well)
-* set bootentry title within GRUB based on ISO (so e.g. "Grml" becomes "Ubuntu")
+* Add support for more live images (especially dracut-based ones like Fedora)
+* Provide more information about the images besides just the filename in the GRUB menu
