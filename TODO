@@ -1,2 +1,3 @@
 * Add support for more live images (especially dracut-based ones like Fedora)
 * Provide more information about the images besides just the filename in the GRUB menu
+* Integrate with https://travis-ci.org/
