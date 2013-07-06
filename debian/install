@@ -1,3 +1,3 @@
-42_grml etc/grub.d/
+debian etc/grub.d/
 etc/default etc/
-debian/README usr/share/doc/grml-rescueboot/
+debian/README usr/share/doc/live-iso-boot/

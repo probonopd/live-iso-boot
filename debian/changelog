@@ -1,4 +1,4 @@
-grml-rescueboot (0.4.3) unstable; urgency=low
+live-iso-boot (0.4.3) unstable; urgency=low
 
   [ Christian Hofstaedtler ]
   * [12bae4d] Remove obsolete DM-Upload-Allowed flag
@@ -7,14 +7,14 @@ grml-rescueboot (0.4.3) unstable; urgency=low
 
  -- Michael Prokop <mika@grml.org>  Tue, 21 May 2013 22:33:25 +0200
 
-grml-rescueboot (0.4.2) unstable; urgency=low
+live-iso-boot (0.4.2) unstable; urgency=low
 
   * [395abc5] Maintainer scripts: test for presence of grub.cfg, don't
     execute update-grub otherwise (Closes: #660588)
 
  -- Michael Prokop <mika@grml.org>  Mon, 20 Feb 2012 14:58:33 +0100
 
-grml-rescueboot (0.4.1) unstable; urgency=low
+live-iso-boot (0.4.1) unstable; urgency=low
 
   [ Christian Hofstaedtler ]
   * [999a45a] uppercase acronyms in package description (Closes: #637846)
@@ -29,7 +29,7 @@ grml-rescueboot (0.4.1) unstable; urgency=low
 
  -- Michael Prokop <mika@grml.org>  Thu, 12 Jan 2012 15:40:07 +0100
 
-grml-rescueboot (0.4.0) unstable; urgency=low
+live-iso-boot (0.4.0) unstable; urgency=low
 
   The "initial upload to Debian" release.
 
@@ -37,9 +37,9 @@ grml-rescueboot (0.4.0) unstable; urgency=low
   * [241540a] Bump Standards-Version to 3.9.2.
   * [d73ed97] Adjust Maintainers and Uploaders field, add DM-Upload-
     Allowed and remove Origin/Bugs fields for inclusion in Debian.
-  * [1415f0a] Adjust header information in 42_grml for inclusion in
+  * [1415f0a] Adjust header information in debian for inclusion in
     Debian.
-  * [886df31] Adjust README file WRT usage scenario of grml-rescueboot.
+  * [886df31] Adjust README file WRT usage scenario of live-iso-boot.
   * [ccfa8e7] Control file: switch Section from misc to admin.
   * [a499f1a] Update copyright information.
 
@@ -51,7 +51,7 @@ grml-rescueboot (0.4.0) unstable; urgency=low
 
  -- Michael Prokop <mika@grml.org>  Fri, 29 Jul 2011 12:34:13 +0200
 
-grml-rescueboot (0.3.3) unstable; urgency=low
+live-iso-boot (0.3.3) unstable; urgency=low
 
   [ Ulrich Dangel ]
   * [b2a6895] Add support for raid devices
@@ -61,14 +61,14 @@ grml-rescueboot (0.3.3) unstable; urgency=low
 
  -- Christian Hofstaedtler <ch@grml.org>  Sat, 26 Mar 2011 00:42:23 +0100
 
-grml-rescueboot (0.3.2) unstable; urgency=low
+live-iso-boot (0.3.2) unstable; urgency=low
 
   [ Ulrich Dangel ]
-  * [e5a68ae] Refactored 42_grml and support lvm devices [Closes: issue971].
+  * [e5a68ae] Refactored debian and support lvm devices [Closes: issue971].
 
  -- Christian Hofstaedtler <ch@grml.org>  Fri, 25 Mar 2011 22:52:36 +0100
 
-grml-rescueboot (0.3.1) unstable; urgency=low
+live-iso-boot (0.3.1) unstable; urgency=low
 
   * [6323d69] Probe the device where the Grml ISO is being stored using
     ${grub_probe} instead of using ${GRUB_DEVICE_BOOT}.
@@ -77,7 +77,7 @@ grml-rescueboot (0.3.1) unstable; urgency=low
 
  -- Michael Prokop <mika@grml.org>  Mon, 21 Mar 2011 00:25:57 +0100
 
-grml-rescueboot (0.3.0) unstable; urgency=low
+live-iso-boot (0.3.0) unstable; urgency=low
 
   * [3c6f08e] Use prepare_grub_to_access_device to provide further menu
     entry details for GRUB. - thanks to Frédéric Boiteux
@@ -86,17 +86,17 @@ grml-rescueboot (0.3.0) unstable; urgency=low
 
  -- Michael Prokop <mika@grml.org>  Mon, 21 Feb 2011 22:23:25 +0100
 
-grml-rescueboot (0.2.0) unstable; urgency=low
+live-iso-boot (0.2.0) unstable; urgency=low
 
   * [199476a] post-maintainer scripts: make sure update-grub is present
     before executing it - thanks to Samat K Jain for reporting.
   * [d583c5d] Add TODO file.
   * [1e7153d] Support setting location of ISOs via ISO_LOCATION in
-    /etc/default/grml-rescueboot.
+    /etc/default/live-iso-boot.
 
  -- Michael Prokop <mika@grml.org>  Fri, 07 Jan 2011 11:30:24 +0100
 
-grml-rescueboot (0.1.0) unstable; urgency=low
+live-iso-boot (0.1.0) unstable; urgency=low
 
   [ Andreas "Jimmy" Gredler ]
   * Initial Release.

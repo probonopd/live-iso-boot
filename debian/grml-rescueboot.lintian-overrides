@@ -1,2 +1,2 @@
-# Shipping /boot/grml (empty) is intentional.
-grml-rescueboot binary: package-contains-empty-directory boot/grml/
+# Shipping /boot/iso (empty) is intentional.
+live-iso-boot binary: package-contains-empty-directory boot/grml/
