@@ -1,0 +1,8 @@
+## Configuration file for Debian package live-iso-boot.
+
+# Location of ISOs:
+# ISO_LOCATION="/boot/iso/"
+
+# To set any specific bootoptions for rescue images
+# present in /boot/iso just set and enable the following option:
+# CUSTOM_BOOTOPTIONS="ssh=password lang=de"
