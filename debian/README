@@ -1,8 +1,8 @@
 The Debian Package live-iso-boot
-==================================
+================================
 
 Usually systems are rescued with CD or USB stick. live-iso-boot makes
-it possible to simply copy an Grml ISO image to the harddisk and boot the
+it possible to simply copy an ISO image to the harddisk and boot the
 rescue image. This eliminates the need to carry around a USB stick
 to rescue a system as long as the hard disk and the boot manager still
 work.
@@ -14,7 +14,7 @@ ISO images in /boot/iso/ and adds an entry for each image found.
 Howto
 -----
 
-- Get a recent Grml image from http://grml.org/download/
+- Get a recent live ISO image, e.g., from Ubuntu or debian-live
 - Copy the image to /boot/iso
 - Run update-grub
 - Reboot and enjoy your new rescue system
@@ -23,12 +23,11 @@ Limitations
 -----------
 
 live-iso-boot uses the loopback feature of GRUB2, so it won't work
-with legacy GRUB. Furthermore the ISO image needs to support
-loopback.cfg, a file which is placed in /boot/grub/. Grml supports
-loopback.cfg beginning with release version 2010.04.
+with legacy GRUB. Furthermore the distribution must support
+booting from a loop-mounted ISO file, and live-iso-boot needs 
+to guess some parameters based on the contents of the ISO. This
+might not work for some distributions yet.
 
-More technical details can be found here:
-http://www.supergrubdisk.org/wiki/Loopback.cfg
 
 Create your own ISO
 -------------------
