@@ -1,0 +1,190 @@
+#!/bin/sh
+# Filename:      42_live-iso
+# Purpose:       grub-mkconfig helper script for many different Live ISO systems
+#                Working:
+#                * ubuntu-12.04.2-desktop-i386.iso and other Casper-based systems
+#                * binary.hybrid.iso and other debian-live 3.x based systems
+#                * kali-linux-1.0.3-i386.iso
+#                Not working yet (FIXME):
+#                * webc-20.0.iso
+#                * clonezilla-live-2.1.1-25-i686-pae.iso
+#                * tails-i386-0.19.iso
+#                * live-2.2.1.iso
+# Authors:       probono based on previous work by the Grml team (grml.org), 
+#                (c) Andreas Gredler <jimmy@grml.org>, Michael Prokop <mika@grml.org>
+# License:       This file is licensed under the GPL v2+.
+################################################################################
+
+set -e
+
+prefix=/usr
+exec_prefix=${prefix}
+bindir=${exec_prefix}/bin
+libdir=${exec_prefix}/lib
+. ${libdir}/grub/grub-mkconfig_lib
+
+# default unless configured otherwise:
+ISO_LOCATION="/boot/iso"
+. /etc/default/keyboard
+KEYBOARD=$XKBLAYOUT # "de"
+LANGUAGE=$LANG # "de_DE.UTF-8"
+TIMEZONE=$(cat /etc/timezone) # "Europe/Berlin"
+USER="root"
+HOST="live"
+
+if [ -r /etc/default/live-iso-boot ] ; then
+  . /etc/default/live-iso-boot
+fi
+
+ROOTDEV=$(mount | grep  "on / type" | cut -d " " -f 1)
+
+# Live systems need a hint to find their loop-mounted ISO; see
+# http://live.debian.net/manpages/3.x/en/txt/live-config.7.txt
+# http://live.debian.net/manpages/2.x/en/txt/live-boot.7.txt
+# $ROOTDEV = /dev/sdX
+DEBIAN_LIVE_ARGS="for-debian-live--> findiso=\${iso_path} live-config.keyboard-layouts=$KEYBOARD live-config.locales=$LANGUAGE live-config.timezone=$TIMEZONE live-config.username=$USER live-config.hostname=$HOST for-old-debian-live--> fromhd=$ROOTDEV fromiso=\${iso_path}" # debian-live systems
+# http://manpages.ubuntu.com/manpages/precise/man7/casper.7.html
+CASPER_ARGS="for-casper--> iso-scan/filename=\${iso_path} console-setup/layoutcode=$KEYBOARD locale=$LANGUAGE timezone=$TIMEZONE username=$USER hostname=$HOST noprompt" # casper-based systems besides Ubuntu (which has loopback.cfg)
+
+cat << EOF
+
+        args="$DEBIAN_LIVE_ARGS $CASPER_ARGS custom--> $CUSTOM_BOOTOPTIONS additional--> $additional_param parsed_from_iso-->"
+        export args
+
+EOF
+
+resolve_dm_name() {
+  retval="$1"
+  base=${1##*/}
+  for block in /sys/block /sys/class/block ; do
+    [ ! -d ${block}/${base}/dm ] && continue
+    retval="/dev/mapper/$(cat ${block}/${base}/dm/name)"
+    break
+  done
+  case "$retval" in
+    /dev/dm-*)
+    minor=${retval##*-}
+   retval="/dev/mapper/$(dmsetup info -C --noheadings -o name -j 253 -m $minor)"
+    ;;
+  esac
+
+  echo "$retval"
+}
+
+get_dependencies() {
+  device=${1}
+  if [ -z ${device} ] ; then
+    return
+  fi
+  device=$(readlink -f ${device})
+  case "$device" in
+    /dev/mapper/*)
+    device="/dev/dm-$(dmsetup info -C --noheadings -o minor "$device")"
+    ;;
+  esac
+
+  base=${device##*/}
+  dependencies=""
+  additional_dependencies=""
+  for block in /sys/block /sys/class/block ; do
+    [ ! -d ${block}/${base}/slaves ] && continue
+    for file in  ${block}/${base}/slaves/* ; do
+      dep_name="/dev/${file##*/}"
+      dep_name=$(resolve_dm_name ${dep_name})
+
+      # resolve recursively all dependencies
+      additional_dependencies=$(get_dependencies ${dep_name})
+
+      dependencies="$dependencies $additional_dependencies $dep_name"
+    done
+    break
+  done
+  echo $dependencies
+
+}
+
+iso_list=""
+for file in "${ISO_LOCATION}"/*.iso ; do
+     if grub_file_is_not_garbage "$file" ; then
+       iso_list="$iso_list $file "
+     fi
+done
+
+for the_iso in $iso_list ; do
+  rel_dirname="$(make_system_path_relative_to_its_root $(dirname $the_iso))"
+  iso_name="$(basename $the_iso)"
+  device="$(${grub_probe} -t device ${the_iso})"
+
+  additional_param=""
+
+  case "$device" in
+    /dev/mapper*|/dev/md*)
+      dependencies=$(get_dependencies ${device})
+      dep_string=""
+      for dep in $dependencies $device ; do
+        dep_string="$dep_string,$dep"
+      done
+      dep_string=${dep_string#,}
+      additional_param="live-media=$dep_string"
+    ;;
+  esac
+
+  echo "$the_iso" >&2
+  title="$iso_name"
+  M=/tmp/.__mount/
+  mkdir $M
+  mount -o ro "$the_iso" $M
+  #ls $M >&2
+
+  # Ubuntu has loopback.cfg, debian-live systems have live.cfg, some have EFI/grub.cfg
+  CONFIG=$(find $M -name loopback.cfg -or -name live.cfg -or -name grub.cfg | head -n 1 | sed -e "s|$M||g")
+  # echo "  CONFIG=$CONFIG" >&2
+
+  # Everyone is welcome to improve the regex; be sure to test on a  *lot* of different live ISOs
+  KERNEL=$(grep "vmlinu" $M/$CONFIG | head -n 1 | grep -o -e '/[[:alnum:]\/\.\-\_]*' | head -n 1 )
+  INITRD=$(grep "initrd" $M/$CONFIG | head -n 1 | grep -o -e '/[[:alnum:]\/\.\-\_]*' | head -n 1 )
+  ARGS=$(grep "boot=" $M/$CONFIG | sed -e "s|linux\t||" | head -n 1 | sed -e "s|append ||" | sed -e "s|initrd=||" | \
+  sed -e "s|$KERNEL||" -e "s|linux ||" -e "s|\t||" -e 's/^ *//g' -e 's/ *$//g' -e "s|$INITRD ||")
+
+  # echo "  INITRD=$INITRD" >&2
+  # echo "  KERNEL=$KERNEL" >&2
+  # echo "  ARGS=$ARGS" >&2
+
+  # Check whether we have KERNEL, INITRD and they are files on the ISO, and whether we have ARGS
+  if [ ! -f $M/$KERNEL ] ; then
+      echo "Kernel not found, skipping"
+      continue
+  fi
+  if [ ! -f $M/$INITRD ] ; then
+      echo "Initrd not found, skipping"
+      continue
+  fi
+  if [ -z '$ARGS' ] ; then
+      echo "Boot arguments not found, skipping"
+      continue
+  fi
+
+  umount $M
+  rm -r $M
+
+  cat << EOF
+menuentry "${title}" {
+$(prepare_grub_to_access_device "$device" | sed -e "s/^/        /")
+        iso_path="${rel_dirname}/${iso_name}"
+        export iso_path
+        loopback loop \${iso_path}
+        # set root=(loop)
+        linux (loop)$KERNEL \${args} $ARGS 
+        initrd (loop)$INITRD
+}
+EOF
+
+  the_iso=""
+  CONFIG=""
+  INITRD=""
+  KERNEL=""
+  ARGS=""
+
+done
+
+## END OF FILE #################################################################
