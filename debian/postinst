@@ -5,10 +5,10 @@ set -e
 
 update_grub_wrapper() {
   # default, unless configured otherwise:
-  ISO_LOCATION=/boot/grml
+  ISO_LOCATION=/boot/iso
 
-  if [ -r /etc/default/grml-rescueboot ] ; then
-    . /etc/default/grml-rescueboot
+  if [ -r /etc/default/live-iso-boot ] ; then
+    . /etc/default/live-iso-boot
   fi
 
   if ! ls "${ISO_LOCATION}"/*iso >/dev/null 2>&1 ; then
