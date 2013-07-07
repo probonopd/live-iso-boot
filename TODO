@@ -1,3 +1,0 @@
-* Add support for more live images
-* Provide more information about the images besides just the filename in the GRUB menu
-* Integrate with https://travis-ci.org/
