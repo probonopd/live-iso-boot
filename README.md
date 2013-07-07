@@ -33,3 +33,10 @@ debian-live based
 
 dracut-based (language and keyboard setting do not work yet)
  * http://download.fedoraproject.org/pub/fedora/linux/releases/19/Live/i386/Fedora-Live-Desktop-i686-19-1.iso
+
+Working live ISOs
+-----------------
+
+* Add support for more live images
+* Provide more information about the images besides just the filename in the GRUB menu
+* Integrate with https://travis-ci.org/
