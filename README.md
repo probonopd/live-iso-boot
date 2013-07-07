@@ -28,6 +28,7 @@ casper-based
  * http://releases.ubuntu.com/precise/ubuntu-12.04.2-desktop-i386.iso
 
 debian-live based
+ * http://live-build-cgi.debian.net/cgi-bin/live-build wheezy images
  * http://ftp.halifax.rwth-aachen.de/kali-images/kali-linux-1.0.3-i386.iso
 
 dracut-based (language and keyboard setting do not work yet)
