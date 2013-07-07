@@ -8,12 +8,16 @@
 #                Not working yet (FIXME):
 #                * webc-20.0.iso
 #                * clonezilla-live-2.1.1-25-i686-pae.iso
-#                * tails-i386-0.19.iso
+#                * tails-i386-0.19.iso and other debian-live 2.x based systems
 #                * live-2.2.1.iso
-# Authors:       probono based on previous work by the Grml team (grml.org), 
+# Authors:       probono (c) 2013
+#                based on previous work by the Grml team (grml.org), 
 #                (c) Andreas Gredler <jimmy@grml.org>, Michael Prokop <mika@grml.org>
 # License:       This file is licensed under the GPL v2+.
-################################################################################
+#####################################################################################
+
+# Test with
+# sudo qemu -hda /dev/sdX -snapshot
 
 set -e
 
@@ -38,20 +42,31 @@ fi
 
 ROOTDEV=$(mount | grep  "on / type" | cut -d " " -f 1)
 
-# Live systems need a hint to find their loop-mounted ISO; see
 # http://live.debian.net/manpages/3.x/en/txt/live-config.7.txt
+DEBIAN_LIVE_3_ARGS="for-debian-live-3--> findiso=\${iso_path} live-config.keyboard-layouts=$KEYBOARD live-config.locales=$LANGUAGE live-config.timezone=$TIMEZONE live-config.username=$USER live-config.hostname=$HOST" # debian-live systems
+
 # http://live.debian.net/manpages/2.x/en/txt/live-boot.7.txt
 # $ROOTDEV = /dev/sdX
-DEBIAN_LIVE_ARGS="for-debian-live--> findiso=\${iso_path} live-config.keyboard-layouts=$KEYBOARD live-config.locales=$LANGUAGE live-config.timezone=$TIMEZONE live-config.username=$USER live-config.hostname=$HOST for-old-debian-live--> fromhd=$ROOTDEV fromiso=\${iso_path}" # debian-live systems
+# Currently not working yet, gives
+# losetup /dev/loop0: No such file or directory
+# mkdir: can't create directory '/isofrom': File exists
+# mount: mounting /dev/sda1 on /isofrom failed: No such file or directory
+# or
+# Warning: device for bootoption fromiso= (/boot/iso/tails-i386-0.19.iso) not found
+DEBIAN_LIVE_2_ARGS="for-debian-live-2--> fromiso=$ROOTDEV/\${iso_path} live-config.keyboard-layouts=$KEYBOARD live-config.locales=$LANGUAGE live-config.timezone=$TIMEZONE live-config.username=$USER live-config.hostname=$HOST"
+
+# Which distros use this?
+# fromhd=$ROOTDEV fromiso=\${iso_path}
+
 # http://manpages.ubuntu.com/manpages/precise/man7/casper.7.html
 CASPER_ARGS="for-casper--> iso-scan/filename=\${iso_path} console-setup/layoutcode=$KEYBOARD locale=$LANGUAGE timezone=$TIMEZONE username=$USER hostname=$HOST noprompt" # casper-based systems besides Ubuntu (which has loopback.cfg)
 
-cat << EOF
-
-        args="$DEBIAN_LIVE_ARGS $CASPER_ARGS custom--> $CUSTOM_BOOTOPTIONS additional--> $additional_param parsed_from_iso-->"
-        export args
-
-EOF
+#cat << EOF
+#
+#        args="$DEBIAN_LIVE_ARGS $CASPER_ARGS custom--> $CUSTOM_BOOTOPTIONS additional--> $additional_param parsed_from_iso-->"
+#        export args
+#
+#EOF
 
 resolve_dm_name() {
   retval="$1"
@@ -111,6 +126,7 @@ for file in "${ISO_LOCATION}"/*.iso ; do
 done
 
 for the_iso in $iso_list ; do
+
   rel_dirname="$(make_system_path_relative_to_its_root $(dirname $the_iso))"
   iso_name="$(basename $the_iso)"
   device="$(${grub_probe} -t device ${the_iso})"
@@ -137,53 +153,112 @@ for the_iso in $iso_list ; do
   #ls $M >&2
 
   # Ubuntu has loopback.cfg, debian-live systems have live.cfg, some have EFI/grub.cfg
+  unset CONFIG
   CONFIG=$(find $M -name loopback.cfg -or -name live.cfg -or -name grub.cfg | head -n 1 | sed -e "s|$M||g")
   # echo "  CONFIG=$CONFIG" >&2
 
   # Everyone is welcome to improve the regex; be sure to test on a  *lot* of different live ISOs
+  unset INITRD
+  unset KERNEL
+  unset ARGS
   KERNEL=$(grep "vmlinu" $M/$CONFIG | head -n 1 | grep -o -e '/[[:alnum:]\/\.\-\_]*' | head -n 1 )
   INITRD=$(grep "initrd" $M/$CONFIG | head -n 1 | grep -o -e '/[[:alnum:]\/\.\-\_]*' | head -n 1 )
   ARGS=$(grep "boot=" $M/$CONFIG | sed -e "s|linux\t||" | head -n 1 | sed -e "s|append ||" | sed -e "s|initrd=||" | \
   sed -e "s|$KERNEL||" -e "s|linux ||" -e "s|\t||" -e 's/^ *//g' -e 's/ *$//g' -e "s|$INITRD ||")
 
+  # Find a human-readable name for the ISO
+  if [ -e $M/.disk/info ] ; then
+      NAME=$(cat $M/.disk/info | head -n 1 | sed -e 's|\"||g')
+  fi
+
+  # If we did not find a name, we use the ISO filename
+  if [ -z '$NAME' ] ; then
+      NAME=$title
+  fi
+
+  # Find out the type and version of the live ISO
+  unset CASPER_VERSION
+  unset DEBIAN_LIVE_VERSION
+  if [ -e $M/casper/filesystem.manifest ] ; then
+      CASPER_VERSION=$(grep -e "^casper" $M/casper/filesystem.manifest | head -n 1 | awk '{ print $2; }')
+  fi
+  if [ -e $M/live/filesystem.packages ] ; then
+      DEBIAN_LIVE_VERSION=$(grep -e "^live-boot" $M/live/filesystem.packages | head -n 1 | awk '{ print $2; }')
+  fi
+  if [ -e $M/live/filesystem.git/objects/pack ] ; then
+      echo "  Type of live ISO detected (uses GIT pack), but don't know how to loop-boot these" >&2
+  fi
+
+  # Depending on the type of the live ISO, give it the corresponding args
+  unset VERSION
+  unset MAJOR
+  unset LIVE_ARGS
+  if [ -n "$CASPER_VERSION" ] ; then
+      VERSION="Casper $CASPER_VERSION"
+      MAJOR=$(echo $CASPER_VERSION | cut -d "." -f 1)
+      LIVE_ARGS="$CASPER_ARGS"
+  fi
+  if [ -n "$DEBIAN_LIVE_VERSION" ] ; then
+      VERSION="debian-live $DEBIAN_LIVE_VERSION"
+      MAJOR=$(echo $DEBIAN_LIVE_VERSION | cut -d "." -f 1)
+      if [ $MAJOR -eq 3 ] ; then
+          LIVE_ARGS="$DEBIAN_LIVE_3_ARGS"
+      elif [ $MAJOR -eq 2 ] ; then
+          LIVE_ARGS="$DEBIAN_LIVE_2_ARGS"
+      else
+          echo "  Unhandled debian-live version found, skipping" >&2
+          umount $M
+          rm -r $M
+          continue
+      fi
+  fi
+
   # echo "  INITRD=$INITRD" >&2
   # echo "  KERNEL=$KERNEL" >&2
   # echo "  ARGS=$ARGS" >&2
+  # echo "  CASPER_VERSION=$CASPER_VERSION" >&2
+  # echo "  DEBIAN_LIVE_VERSION=$DEBIAN_LIVE_VERSION" >&2
 
   # Check whether we have KERNEL, INITRD and they are files on the ISO, and whether we have ARGS
   if [ ! -f $M/$KERNEL ] ; then
-      echo "Kernel not found, skipping"
+      umount $M
+      rm -r $M
       continue
   fi
   if [ ! -f $M/$INITRD ] ; then
-      echo "Initrd not found, skipping"
+      echo "  Initrd not found, skipping" >&2
+      umount $M
+      rm -r $M
       continue
   fi
-  if [ -z '$ARGS' ] ; then
-      echo "Boot arguments not found, skipping"
+  if [ -z "$ARGS" ] ; then
+      echo "  Boot arguments not found, skipping" >&2
+      umount $M
+      rm -r $M
       continue
   fi
 
   umount $M
   rm -r $M
 
+  if [ -z "$VERSION" ] ; then
+      echo "  Type of live ISO not detected, skipping" >&2
+      continue
+  fi
+
   cat << EOF
-menuentry "${title}" {
+menuentry "${NAME} - ${VERSION}" {
 $(prepare_grub_to_access_device "$device" | sed -e "s/^/        /")
         iso_path="${rel_dirname}/${iso_name}"
         export iso_path
+        live_args="$LIVE_ARGS"
+        custom_args="$CUSTOM_BOOTOPTIONS"
+        iso_args="$ARGS"
         loopback loop \${iso_path}
-        # set root=(loop)
-        linux (loop)$KERNEL \${args} $ARGS 
+        linux (loop)$KERNEL \${iso_path} \${live_args} \${custom_args} \${iso_args}
         initrd (loop)$INITRD
 }
 EOF
-
-  the_iso=""
-  CONFIG=""
-  INITRD=""
-  KERNEL=""
-  ARGS=""
 
 done
 
