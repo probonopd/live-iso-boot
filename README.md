@@ -25,10 +25,10 @@ Working live ISOs
 -----------------
 
 casper-based
- * ubuntu-12.04.2-desktop-i386.iso
+ * http://releases.ubuntu.com/precise/ubuntu-12.04.2-desktop-i386.iso
 
 debian-live based
- * kali-linux-1.0.3-i386.iso
+ * http://ftp.halifax.rwth-aachen.de/kali-images/kali-linux-1.0.3-i386.iso
 
 dracut-based (language and keyboard setting do not work yet)
- * Fedora-Live-Desktop-i686-19-1.iso
+ * http://download.fedoraproject.org/pub/fedora/linux/releases/19/Live/i386/Fedora-Live-Desktop-i686-19-1.iso
