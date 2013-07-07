@@ -5,6 +5,7 @@
 #                * ubuntu-12.04.2-desktop-i386.iso and other Casper-based systems
 #                * binary.hybrid.iso and other debian-live 3.x based systems
 #                * kali-linux-1.0.3-i386.iso
+#                * Fedora-Live-Desktop-i686-19-1.iso and other Dracut 029 based systems
 #                Not working yet (FIXME):
 #                * webc-20.0.iso
 #                * clonezilla-live-2.1.1-25-i686-pae.iso
@@ -14,7 +15,7 @@
 #                based on previous work by the Grml team (grml.org), 
 #                (c) Andreas Gredler <jimmy@grml.org>, Michael Prokop <mika@grml.org>
 # License:       This file is licensed under the GPL v2+.
-#####################################################################################
+########################################################################################
 
 # Test with
 # sudo qemu -hda /dev/sdX -snapshot
@@ -43,7 +44,7 @@ fi
 ROOTDEV=$(mount | grep  "on / type" | cut -d " " -f 1)
 
 # http://live.debian.net/manpages/3.x/en/txt/live-config.7.txt
-DEBIAN_LIVE_3_ARGS="for-debian-live-3--> findiso=\${iso_path} live-config.keyboard-layouts=$KEYBOARD live-config.locales=$LANGUAGE live-config.timezone=$TIMEZONE live-config.username=$USER live-config.hostname=$HOST" # debian-live systems
+DEBIAN_LIVE_3_ARGS="for-debian-live-3 --> findiso=\${iso_path} live-config.keyboard-layouts=$KEYBOARD live-config.locales=$LANGUAGE live-config.timezone=$TIMEZONE live-config.username=$USER live-config.hostname=$HOST" # debian-live systems
 
 # http://live.debian.net/manpages/2.x/en/txt/live-boot.7.txt
 # $ROOTDEV = /dev/sdX
@@ -53,13 +54,21 @@ DEBIAN_LIVE_3_ARGS="for-debian-live-3--> findiso=\${iso_path} live-config.keyboa
 # mount: mounting /dev/sda1 on /isofrom failed: No such file or directory
 # or
 # Warning: device for bootoption fromiso= (/boot/iso/tails-i386-0.19.iso) not found
-DEBIAN_LIVE_2_ARGS="for-debian-live-2--> fromiso=$ROOTDEV/\${iso_path} live-config.keyboard-layouts=$KEYBOARD live-config.locales=$LANGUAGE live-config.timezone=$TIMEZONE live-config.username=$USER live-config.hostname=$HOST"
+DEBIAN_LIVE_2_ARGS="for-debian-live-2 --> fromiso=$ROOTDEV/\${iso_path} live-config.keyboard-layouts=$KEYBOARD live-config.locales=$LANGUAGE live-config.timezone=$TIMEZONE live-config.username=$USER live-config.hostname=$HOST"
 
 # Which distros use this?
 # fromhd=$ROOTDEV fromiso=\${iso_path}
 
 # http://manpages.ubuntu.com/manpages/precise/man7/casper.7.html
-CASPER_ARGS="for-casper--> iso-scan/filename=\${iso_path} console-setup/layoutcode=$KEYBOARD locale=$LANGUAGE timezone=$TIMEZONE username=$USER hostname=$HOST noprompt" # casper-based systems besides Ubuntu (which has loopback.cfg)
+CASPER_ARGS="for-casper --> iso-scan/filename=\${iso_path} console-setup/layoutcode=$KEYBOARD locale=$LANGUAGE timezone=$TIMEZONE username=$USER hostname=$HOST noprompt" # casper-based systems besides Ubuntu (which has loopback.cfg)
+
+# Dracut seems to be changing the required args frequently
+# In F19 it expects something like 
+# iso-scan/filename=/boot/iso/Fedora-Live-Desktop-i686-19-1.iso root=live:CDLABEL=Fedora-Live-Desktop-i686-19-1 
+# rootfstype=auto ro rd.live.image quiet rhgb rd.luks=0 rd.md=0 rd.dm=0
+# Entirely unclear how to pass in language and keyboard, TODO: study /lib/dracut/modules.d/10i18n/module-setup.sh
+# TODO: Read /usr/share/doc/dracut-029/NEWS
+DRACUT_F19_ARGS="for-dracut --> iso-scan/filename=\${iso_path}" # the rest is parsed from the ISO itself
 
 #cat << EOF
 #
@@ -152,10 +161,26 @@ for the_iso in $iso_list ; do
   mount -o ro "$the_iso" $M
   #ls $M >&2
 
-  # Ubuntu has loopback.cfg, debian-live systems have live.cfg, some have EFI/grub.cfg
+  # Ubuntu has loopback.cfg, debian-live systems have live.cfg, Fedora 19 has isolinux.cfg, some have EFI/grub.cfg
   unset CONFIG
-  CONFIG=$(find $M -name loopback.cfg -or -name live.cfg -or -name grub.cfg | head -n 1 | sed -e "s|$M||g")
-  # echo "  CONFIG=$CONFIG" >&2
+  CONFIG=$(find $M -name loopback.cfg | head -n 1 | sed -e "s|$M|/|g")
+  if [ -z "$CONFIG" ] ; then
+      CONFIG=$(find $M -name live.cfg | head -n 1 | sed -e "s|$M|/|g")
+  fi
+  if [ -z "$CONFIG" ] ; then
+      CONFIG=$(find $M -name grub.cfg | head -n 1 | sed -e "s|$M|/|g")
+  fi
+  if [ -z "$CONFIG" ] ; then
+      CONFIG=$(find $M -name isolinux.cfg | head -n 1 | sed -e "s|$M|/|g")
+  fi
+
+
+  if [ ! -f $M/$CONFIG ] ; then
+      echo "  .cfg not found, skipping" >&2
+      umount $M
+      rm -r $M
+      continue
+  fi
 
   # Everyone is welcome to improve the regex; be sure to test on a  *lot* of different live ISOs
   unset INITRD
@@ -163,8 +188,19 @@ for the_iso in $iso_list ; do
   unset ARGS
   KERNEL=$(grep "vmlinu" $M/$CONFIG | head -n 1 | grep -o -e '/[[:alnum:]\/\.\-\_]*' | head -n 1 )
   INITRD=$(grep "initrd" $M/$CONFIG | head -n 1 | grep -o -e '/[[:alnum:]\/\.\-\_]*' | head -n 1 )
-  ARGS=$(grep "boot=" $M/$CONFIG | sed -e "s|linux\t||" | head -n 1 | sed -e "s|append ||" | sed -e "s|initrd=||" | \
-  sed -e "s|$KERNEL||" -e "s|linux ||" -e "s|\t||" -e 's/^ *//g' -e 's/ *$//g' -e "s|$INITRD ||")
+  ARGS=$(grep "boot=" $M/$CONFIG | sed -e "s|linux\t||" | head -n 1 | sed -e "s|append ||" \
+         -e "s|initrd=||" -e "s|$KERNEL||" -e "s|linux ||" -e "s|\t||" -e 's/^ *//g' -e 's/ *$//g' -e "s|$INITRD ||")
+  if [ -z "$ARGS" ] ; then
+    # Fedora 19 uses isolinux.cfg
+    KERNELNAME=$(grep "kernel" $M/$CONFIG | head -n 1 | awk '{ print $2; }')
+    KERNEL=$(find $M -name $KERNELNAME | head -n 1 | sed -e "s|$M|/|g")
+    INITRDNAME=$(grep "append" $M/$CONFIG | head -n 1 | awk '{ print $2; }' | sed -e 's|initrd=||g' )
+    echo $INITRDNAME >&2
+    INITRD=$(find $M -name $INITRDNAME | head -n 1 | sed -e "s|$M|/|g")
+    ARGS=$(grep "root=live" $M/$CONFIG | sed -e "s|linux\t||" | head -n 1 | sed -e "s|append ||" \
+           -e "s|initrd=||" -e "s|$KERNELNAME||" -e "s|linux ||" -e "s|\t||" -e 's/^ *//g' \
+           -e 's/ *$//g' -e "s|$INITRDNAME ||" )
+  fi
 
   # Find a human-readable name for the ISO
   if [ -e $M/.disk/info ] ; then
@@ -172,22 +208,33 @@ for the_iso in $iso_list ; do
   fi
 
   # If we did not find a name, we use the ISO filename
-  if [ -z '$NAME' ] ; then
+  if [ -z "$NAME" ] ; then
       NAME=$title
   fi
 
   # Find out the type and version of the live ISO
   unset CASPER_VERSION
   unset DEBIAN_LIVE_VERSION
+  unset DRACUT_VERSION
   if [ -e $M/casper/filesystem.manifest ] ; then
       CASPER_VERSION=$(grep -e "^casper" $M/casper/filesystem.manifest | head -n 1 | awk '{ print $2; }')
   fi
   if [ -e $M/live/filesystem.packages ] ; then
       DEBIAN_LIVE_VERSION=$(grep -e "^live-boot" $M/live/filesystem.packages | head -n 1 | awk '{ print $2; }')
   fi
+  if [ -e $M/LiveOS/squashfs.img ] ; then
+      mount $M/LiveOS/squashfs.img $M
+      if [ -e $M/LiveOS/ext3fs.img ] ; then
+          mount $M/LiveOS/ext3fs.img $M
+          DRACUT_VERSION=$(find $M/var/lib/yum/yumdb/ -name *dracut-0* | grep -o -e dracut.*$ | sed -e 's|dracut-||g')
+          umount $M
+      fi
+      umount $M
+  fi
   if [ -e $M/live/filesystem.git/objects/pack ] ; then
       echo "  Type of live ISO detected (uses GIT pack), but don't know how to loop-boot these" >&2
   fi
+
 
   # Depending on the type of the live ISO, give it the corresponding args
   unset VERSION
@@ -212,15 +259,22 @@ for the_iso in $iso_list ; do
           continue
       fi
   fi
+  if [ -n "$DRACUT_VERSION" ] ; then
+      VERSION="Dracut $DRACUT_VERSION"
+      MAJOR=$(echo $DRACUT_VERSION | cut -d "-" -f 1)
+      LIVE_ARGS="$DRACUT_F19_ARGS"
+  fi
 
-  # echo "  INITRD=$INITRD" >&2
-  # echo "  KERNEL=$KERNEL" >&2
-  # echo "  ARGS=$ARGS" >&2
-  # echo "  CASPER_VERSION=$CASPER_VERSION" >&2
-  # echo "  DEBIAN_LIVE_VERSION=$DEBIAN_LIVE_VERSION" >&2
+  echo "  INITRD=$INITRD" >&2
+  echo "  KERNEL=$KERNEL" >&2
+  echo "  ARGS=$ARGS" >&2
+  echo "  CASPER_VERSION=$CASPER_VERSION" >&2
+  echo "  DEBIAN_LIVE_VERSION=$DEBIAN_LIVE_VERSION" >&2
+  echo "  DRACUT_VERSION=$DRACUT_VERSION" >&2
 
   # Check whether we have KERNEL, INITRD and they are files on the ISO, and whether we have ARGS
   if [ ! -f $M/$KERNEL ] ; then
+      echo "  Kernel not found, skipping" >&2
       umount $M
       rm -r $M
       continue
@@ -255,7 +309,7 @@ $(prepare_grub_to_access_device "$device" | sed -e "s/^/        /")
         custom_args="$CUSTOM_BOOTOPTIONS"
         iso_args="$ARGS"
         loopback loop \${iso_path}
-        linux (loop)$KERNEL \${iso_path} \${live_args} \${custom_args} \${iso_args}
+        linux (loop)$KERNEL \${live_args} \${custom_args} \${iso_args}
         initrd (loop)$INITRD
 }
 EOF
