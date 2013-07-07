@@ -203,6 +203,7 @@ for the_iso in $iso_list ; do
   fi
 
   # Find a human-readable name for the ISO
+  unset NAME
   if [ -e $M/.disk/info ] ; then
       NAME=$(cat $M/.disk/info | head -n 1 | sed -e 's|\"||g')
   fi
@@ -227,6 +228,7 @@ for the_iso in $iso_list ; do
       if [ -e $M/LiveOS/ext3fs.img ] ; then
           mount $M/LiveOS/ext3fs.img $M
           DRACUT_VERSION=$(find $M/var/lib/yum/yumdb/ -name *dracut-0* | grep -o -e dracut.*$ | sed -e 's|dracut-||g')
+          NAME=$(cat $M/etc/redhat-release)
           umount $M
       fi
       umount $M
@@ -263,8 +265,16 @@ for the_iso in $iso_list ; do
       VERSION="Dracut $DRACUT_VERSION"
       MAJOR=$(echo $DRACUT_VERSION | cut -d "-" -f 1)
       LIVE_ARGS="$DRACUT_F19_ARGS"
+      if [ $MAJOR -lt 29 ] ; then
+          echo "  Dracut versions below 029 do not support ISO booting, skipping" >&2
+          # TODO: We can patch the initrd to make it happen...
+          umount $M
+          rm -r $M
+          continue
+      fi
   fi
 
+  echo "  NAME=$NAME" >&2
   echo "  INITRD=$INITRD" >&2
   echo "  KERNEL=$KERNEL" >&2
   echo "  ARGS=$ARGS" >&2
