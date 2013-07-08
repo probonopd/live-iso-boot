@@ -40,3 +40,18 @@ TODO
 * Add support for more live images
 * Provide more information about the images besides just the filename in the GRUB menu
 * Integrate with https://travis-ci.org/
+* Provide a way to set the language of Fedora-type Live ISOs
+
+Investigation into Fedora-type Live ISOs
+----------------------------------------
+
+Fedora-type ISOs use a set of projects-tools, including
+ * dracut  (the system that creates the initamfs used on the Live ISO)
+ * lorax (the system that builds the live ISO, it calls dracut and tells it which modules to inculde in the initramfs)
+ 
+So to get additional functionality into Fedora live systems, I need to
+ * Write a dracut module that does what I need and get the dracut project to accept it
+ * Convince the lorax project that they should tell dracut at ISO creation time that my module should be included
+
+Or
+ * Hook into Fedora in a non-initramfs specific way, e.g., how do they bring up the "Do you want to try out Fedora or install it" nag screen on the Live ISO?
