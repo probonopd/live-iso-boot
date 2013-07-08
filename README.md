@@ -54,4 +54,6 @@ So to get additional functionality into Fedora live systems, I need to
  * Convince the lorax project that they should tell dracut at ISO creation time that my module should be included
 
 Or
- * Hook into Fedora in a non-initramfs specific way, e.g., how do they bring up the "Do you want to try out Fedora or install it" nag screen on the Live ISO?
+ * Hook into Fedora in a non-initramfs specific way, e.g.,
+  * how do they bring up the "Do you want to try out Fedora or install it" nag screen on the Live ISO?
+  * systemd is supposed to act upon certain kernel command line arguments, e.g., systemd.setenv= and locale.LANG= but I could not get it to work
