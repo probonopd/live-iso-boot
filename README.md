@@ -45,6 +45,8 @@ TODO
 Investigation into Fedora-type Live ISOs
 ----------------------------------------
 
+Unlike most other Live images, Fedora-type Live images currently do not include (documented) boot-time kernel arguments to set the language and the keyboard, among other things.
+
 Fedora-type ISOs use a set of projects-tools, including
  * dracut  (the system that creates the initamfs used on the Live ISO)
  * lorax (the system that builds the live ISO, it calls dracut and tells it which modules to inculde in the initramfs; currently it apparently uses dracut --nomdadmconf --nolvmconf --xz --add "livenet dmsquash-live convertfs pollcdrom" --omit plymouth)
