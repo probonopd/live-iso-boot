@@ -1,0 +1,56 @@
+#!/bin/bash
+
+#set -x 
+#set -e 
+
+ISOMOUNTPOINT=/tmp/.__isomount
+TEMP=/tmp/.__initrdtmp
+
+if [ $# -ne 1 ] ; then
+  echo "Usage: $(basename $0) /path/to/Fedora-live.iso"
+  exit 1
+fi
+
+if [ $UID -ne 0 ] ; then
+  echo "You need to be root"
+  exit 1
+fi
+
+echo "Mounting ${1} ..."
+mkdir "${ISOMOUNTPOINT}"
+mount "${1}" "${ISOMOUNTPOINT}" -o loop,ro
+
+INITRD=$(find "${ISOMOUNTPOINT}" -name initr* | head -n 1)
+
+mkdir "${TEMP}"
+cd "${TEMP}"
+
+echo "Unpacking ${INITRD} ..."
+gzip -dc "${INITRD}"  2>/dev/null | cpio -i 2>/dev/null
+unlzma < "${INITRD}"  2>/dev/null | cpio -i 2>/dev/null
+
+umount  "${ISOMOUNTPOINT}"
+rm -r "${ISOMOUNTPOINT}"
+
+echo "Patching ..."
+cat > ./lib/dracut/hooks/pre-pivot/30-deltadir.sh <<\EOF
+#!/bin/sh
+
+# Recursively link files into to the root of the live system
+# Example:
+# rd.live.deltadir=/run/initramfs/isoscan/boot/deltadir
+# would recursively symlink the contents of /boot/deltadir 
+# on the partition on which the ISO is located
+# into / of the live system
+
+DELTADIR=$(getarg rd.live.deltadir=)
+cp -rsf "${DELTADIR}"/* /sysroot/
+EOF
+chmod a+x ./lib/dracut/hooks/pre-pivot/30-deltadir.sh
+
+echo "Repacking ${1}.initrd ..."
+find . | cpio -o -H newc | gzip -9 > "${1}.initrd"
+
+cd - >/dev/null
+
+rm -r "${TEMP}"

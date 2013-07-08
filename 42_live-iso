@@ -67,9 +67,8 @@ CASPER_ARGS="for-casper --> iso-scan/filename=\${iso_path} console-setup/layoutc
 # In F19 it expects something like 
 # iso-scan/filename=/boot/iso/Fedora-Live-Desktop-i686-19-1.iso root=live:CDLABEL=Fedora-Live-Desktop-i686-19-1 
 # rootfstype=auto ro rd.live.image quiet rhgb rd.luks=0 rd.md=0 rd.dm=0
-# Entirely unclear how to pass in language and keyboard, TODO: study /lib/dracut/modules.d/10i18n/module-setup.sh
-# TODO: Read /usr/share/doc/dracut-029/NEWS
-DRACUT_F19_ARGS="for-dracut --> iso-scan/filename=\${iso_path} vconsole.font=latarcyrheb-sun16 vconsole.keymap=de-latin1-nodeadkeys locale.LANG=de_DE.UTF-8" # the language stuff is verbose from http://people.redhat.com/harald/dracut.html; the rest will be parsed from the ISO itself
+# To pass in language and keyboard, still need to patch files as of Fedora 19
+DRACUT_F19_ARGS="for-dracut --> iso-scan/filename=\${iso_path} vconsole.keymap=$KEYBOARD locale.LANG=$LANGUAGE" # the rest will be parsed from the ISO itself
 
 #cat << EOF
 #
@@ -267,6 +266,7 @@ for the_iso in $iso_list ; do
       VERSION="Dracut $DRACUT_VERSION"
       MAJOR=$(echo $DRACUT_VERSION | cut -d "-" -f 1)
       LIVE_ARGS="$DRACUT_F19_ARGS"
+      patch-dracut-initrd "${the_iso}" >&2
       if [ $MAJOR -lt 29 ] ; then
           echo "  Dracut versions below 029 do not support ISO booting, skipping" >&2
           # TODO: We can patch the initrd to make it happen...
@@ -312,18 +312,31 @@ for the_iso in $iso_list ; do
       continue
   fi
 
+  # Check if there is a initrd file next to the ISO that has the same name as the ISO + ".initrd"
+  # if that is the case, then assume that we want to ise that file as the initrd instead of
+  # the one contained inside the ISO. This allows for easy customization of the early (and thus, late)
+  # boot process of the Live ISO
+
+  if [ -f "${rel_dirname}/${iso_name}.initrd" ] ; then
+      INITRD_STRING="${rel_dirname}/${iso_name}.initrd"
+  else
+      INITRD_STRING="(loop)$INITRD"
+  fi
+
   cat << EOF
 menuentry "${NAME} - ${VERSION}" {
         iso_path="${rel_dirname}/${iso_name}"
-        # export iso_path
         live_args="$LIVE_ARGS"
         custom_args="$CUSTOM_BOOTOPTIONS"
         iso_args="$ARGS"
         loopback loop \${iso_path}
         linux (loop)$KERNEL \${live_args} \${custom_args} \${iso_args}
-        initrd (loop)$INITRD
+        initrd $INITRD_STRING
 }
 EOF
+# The following line adds a lot of complicated looking
+# stuff to grub.conf which I don't really need
+# but it's probably there for a reason...
 # $( prepare_grub_to_access_device "$device" | sed -e "s/^/        /")
 
 done

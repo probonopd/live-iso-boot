@@ -41,6 +41,7 @@ TODO
 * Provide more information about the images besides just the filename in the GRUB menu
 * Integrate with https://travis-ci.org/
 * Provide a way to set the language of Fedora-type Live ISOs
+* Package patch-dracut-initrd
 
 Investigation into Fedora-type Live ISOs
 ----------------------------------------
