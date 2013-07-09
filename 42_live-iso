@@ -313,12 +313,12 @@ for the_iso in $iso_list ; do
   fi
 
   # Check if there is a initrd file next to the ISO that has the same name as the ISO + ".initrd"
-  # if that is the case, then assume that we want to ise that file as the initrd instead of
+  # if that is the case, then assume that we want to ise that file as the initrd in addition to
   # the one contained inside the ISO. This allows for easy customization of the early (and thus, late)
   # boot process of the Live ISO
 
-  if [ -f "${rel_dirname}/${iso_name}.initrd" ] ; then
-      INITRD_STRING="${rel_dirname}/${iso_name}.initrd"
+  if [ -f "${rel_dirname}/${iso_name}.addon" ] ; then
+      INITRD_STRING="(loop)$INITRD ${rel_dirname}/${iso_name}.addon" # Look Ma, 2 initramfs images
   else
       INITRD_STRING="(loop)$INITRD"
   fi
