@@ -1,9 +1,13 @@
 #!/bin/bash
 
-#set -x 
-#set -e 
+#set -x
+#set -e
 
-ISOMOUNTPOINT=/tmp/.__isomount
+#
+# Create additional, secondary initramfs image that we load in addition
+# to the one contained on the Live ISO
+#
+
 TEMP=/tmp/.__initrdtmp
 
 if [ $# -ne 1 ] ; then
@@ -16,24 +20,11 @@ if [ $UID -ne 0 ] ; then
   exit 1
 fi
 
-echo "Mounting ${1} ..."
-mkdir "${ISOMOUNTPOINT}"
-mount "${1}" "${ISOMOUNTPOINT}" -o loop,ro
-
-INITRD=$(find "${ISOMOUNTPOINT}" -name initr* | head -n 1)
-
 mkdir "${TEMP}"
 cd "${TEMP}"
 
-echo "Unpacking ${INITRD} ..."
-gzip -dc "${INITRD}"  2>/dev/null | cpio -i 2>/dev/null
-unlzma < "${INITRD}"  2>/dev/null | cpio -i 2>/dev/null
-
-umount  "${ISOMOUNTPOINT}"
-rm -r "${ISOMOUNTPOINT}"
-
-echo "Patching ..."
-cat > ./lib/dracut/hooks/pre-pivot/30-deltadir.sh <<\EOF
+mkdir -p ./usr/lib/dracut/hooks/pre-pivot/
+cat > ./usr/lib/dracut/hooks/pre-pivot/30-deltadir.sh <<\EOF
 #!/bin/sh
 
 # Recursively link files into to the root of the live system
@@ -46,10 +37,10 @@ cat > ./lib/dracut/hooks/pre-pivot/30-deltadir.sh <<\EOF
 DELTADIR=$(getarg rd.live.deltadir=)
 cp -rsf "${DELTADIR}"/* /sysroot/
 EOF
-chmod a+x ./lib/dracut/hooks/pre-pivot/30-deltadir.sh
+chmod a+x ./usr/lib/dracut/hooks/pre-pivot/30-deltadir.sh
 
 echo "Repacking ${1}.initrd ..."
-find . | cpio -o -H newc | gzip -9 > "${1}.initrd"
+find . | cpio -o -H newc | gzip -9 > "${1}.addon"
 
 cd - >/dev/null
 
