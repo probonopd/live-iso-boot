@@ -1,3 +1,6 @@
+<span style="color:#FF0000">This repository is deprecated. Go to https://github.com/SystemImageKit instead.</span>
+
+
 live-iso-boot
 =============
 
